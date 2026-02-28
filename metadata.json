@@ -1,0 +1,7 @@
+{
+  "name": "Remix: Ibkane IA",
+  "description": "Votre assistant intelligent pour les devoirs et exercices. Créé par Ibrahima Kane.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Ibkane IA</title>
+    <script type="module">
+      import RefreshRuntime from "/@react-refresh"
+      RefreshRuntime.injectIntoGlobalHook(window)
+      window.$RefreshReg$ = () => {}
+      window.$RefreshSig$ = () => (type) => type
+      window.__vite_plugin_react_preamble_installed__ = true
+    </script>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Ibkane IA" />
+    <link rel="apple-touch-icon" href="https://picsum.photos/seed/ibkane/180/180" />
+    
+    <!-- Google AdSense - Remplacez ca-pub-XXXX par votre vrai ID plus tard -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ID" crossorigin="anonymous"></script>
+    
+    <style>
+      body {
+        overscroll-behavior-y: contain;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+      }
+      /* Allow selection only in specific areas if needed, but the request said "no copy" */
+      .allow-select {
+        user-select: text;
+      }
+    </style>
+  </head>
+  <body class="bg-zinc-950 text-zinc-100">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
