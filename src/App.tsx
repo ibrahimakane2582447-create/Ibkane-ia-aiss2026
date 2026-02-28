@@ -4,18 +4,20 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Camera, Image as ImageIcon, X, User, Bot, Loader2, Sparkles, Trash2 } from 'lucide-react';
+import { Send, Camera, Image as ImageIcon, X, User, Bot, Loader2, Sparkles, Trash2, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { cn } from './lib/utils';
-import { generateResponse } from './services/geminiService';
+import { generateResponse, GeminiResponse } from './services/geminiService';
 import { AdBanner } from './components/AdBanner';
+import { GeneratedImage } from './components/GeneratedImage';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   image?: string;
+  generatedImages?: string[];
   timestamp: Date;
 }
 
@@ -77,12 +79,13 @@ export default function App() {
         content: msg.content
       }));
 
-      const response = await generateResponse(userMessage.content, userMessage.image, history);
+      const response: GeminiResponse = await generateResponse(userMessage.content, userMessage.image, history);
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response,
+        content: response.text,
+        generatedImages: response.generatedImages,
         timestamp: new Date(),
       };
       
@@ -192,35 +195,41 @@ export default function App() {
                 )}
               </div>
               
-              <div className={cn(
-                "flex flex-col max-w-[85%]",
-                message.role === 'user' ? "items-end" : "items-start"
-              )}>
-                {message.image && (
-                  <div className={cn(
-                    "mb-2 rounded-2xl overflow-hidden border shadow-xl",
-                    isDarkMode ? "border-zinc-800" : "border-zinc-200"
-                  )}>
-                    <img 
-                      src={message.image} 
-                      alt="Exercice" 
-                      className={cn("max-w-full max-h-64 object-contain", isDarkMode ? "bg-zinc-900" : "bg-white")} 
-                    />
-                  </div>
-                )}
-                
                 <div className={cn(
-                  "px-4 py-3 rounded-2xl text-sm shadow-sm transition-colors",
-                  message.role === 'user' 
-                    ? "bg-emerald-600 text-white rounded-tr-none" 
-                    : (isDarkMode 
-                        ? "bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-tl-none" 
-                        : "bg-white text-zinc-900 border border-zinc-200 rounded-tl-none")
+                  "flex flex-col max-w-[85%] gap-2",
+                  message.role === 'user' ? "items-end" : "items-start"
                 )}>
-                  <div className={cn("markdown-body", !isDarkMode && "light-markdown")}>
-                    <Markdown>{message.content}</Markdown>
-                  </div>
-                </div>
+                  {message.image && (
+                    <div className={cn(
+                      "rounded-2xl overflow-hidden border shadow-xl",
+                      isDarkMode ? "border-zinc-800" : "border-zinc-200"
+                    )}>
+                      <img 
+                        src={message.image} 
+                        alt="Exercice" 
+                        className={cn("max-w-full max-h-64 object-contain", isDarkMode ? "bg-zinc-900" : "bg-white")} 
+                      />
+                    </div>
+                  )}
+
+                  {message.generatedImages && message.generatedImages.map((img, idx) => (
+                    <GeneratedImage key={idx} src={img} isDarkMode={isDarkMode} />
+                  ))}
+                  
+                  {message.content && (
+                    <div className={cn(
+                      "px-4 py-3 rounded-2xl text-sm shadow-sm transition-colors",
+                      message.role === 'user' 
+                        ? "bg-emerald-600 text-white rounded-tr-none" 
+                        : (isDarkMode 
+                            ? "bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-tl-none" 
+                            : "bg-white text-zinc-900 border border-zinc-200 rounded-tl-none")
+                    )}>
+                      <div className={cn("markdown-body", !isDarkMode && "light-markdown")}>
+                        <Markdown>{message.content}</Markdown>
+                      </div>
+                    </div>
+                  )}
                 
                 <span className="text-[10px] text-zinc-600 mt-1 px-1">
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

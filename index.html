@@ -17,8 +17,19 @@
     <meta name="apple-mobile-web-app-title" content="Ibkane IA" />
     <link rel="apple-touch-icon" href="https://picsum.photos/seed/ibkane/180/180" />
     
-    <!-- Google AdSense - Remplacez ca-pub-XXXX par votre vrai ID plus tard -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ID" crossorigin="anonymous"></script>
+    <!-- Google AdSense -->
+    <script id="adsense-script" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ID" crossorigin="anonymous"></script>
+    
+    <script>
+      // Mise à jour dynamique de l'ID AdSense si configuré
+      const pubId = "YOUR_ID"; // À remplacer par votre ID ca-pub-XXXX
+      if (pubId !== "YOUR_ID") {
+        const script = document.getElementById('adsense-script');
+        if (script) {
+          script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-${pubId}`;
+        }
+      }
+    </script>
     
     <style>
       body {

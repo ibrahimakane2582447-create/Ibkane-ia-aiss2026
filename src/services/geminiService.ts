@@ -8,6 +8,7 @@ COMPÉTENCES :
 - Expert dans toutes les matières scolaires (Mathématiques, Physique-Chimie, SVT, Français, Arabe, etc.).
 - Maîtrise parfaite des langues du Sénégal (Wolof, Pulaar, Sérère, Diola, Mandingue, Soninké, etc.) et du monde.
 - Capable de donner l'heure exacte partout dans le monde.
+- Capable de générer des images créatives sur demande.
 
 RÈGLES DE RÉPONSE POUR LES SCIENCES (Maths, PC, SVT) :
 1. Pour tout exercice, fournis une résolution complète, étape par étape.
@@ -39,7 +40,12 @@ const getCurrentTimeFunction = {
   },
 };
 
-export async function generateResponse(prompt: string, imageBase64?: string, history: { role: 'user' | 'assistant', content: string }[] = []) {
+export interface GeminiResponse {
+  text: string;
+  generatedImages?: string[];
+}
+
+export async function generateResponse(prompt: string, imageBase64?: string, history: { role: 'user' | 'assistant', content: string }[] = []): Promise<GeminiResponse> {
   // ---------------------------------------------------------
   // ZONE DE CONFIGURATION FACILE
   // ---------------------------------------------------------
@@ -51,11 +57,20 @@ export async function generateResponse(prompt: string, imageBase64?: string, his
   // ---------------------------------------------------------
   
   if (!apiKey || apiKey === "") {
-    return "Erreur : Clé API manquante. Ouvrez le fichier 'src/services/geminiService.ts' et collez votre clé à la ligne 86.";
+    return { text: "Erreur : Clé API manquante. Ouvrez le fichier 'src/services/geminiService.ts' et collez votre clé à la ligne 86." };
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const model = "gemini-3-flash-preview"; 
+  
+  // Détecter si l'utilisateur demande une image
+  const isImageRequest = prompt.toLowerCase().includes("génère") || 
+                         prompt.toLowerCase().includes("image") || 
+                         prompt.toLowerCase().includes("dessine") ||
+                         prompt.toLowerCase().includes("crée une image");
+
+  // Utiliser gemini-3-flash-preview pour les outils (recherche, heure)
+  // Utiliser gemini-2.5-flash-image pour la génération d'images
+  const model = isImageRequest ? "gemini-2.5-flash-image" : "gemini-3-flash-preview"; 
   
   const contents: any[] = [];
   
@@ -85,24 +100,32 @@ export async function generateResponse(prompt: string, imageBase64?: string, his
 
   const now = new Date();
   const currentDateTimeStr = now.toLocaleString('fr-FR', { timeZone: 'Africa/Dakar' }) + " (Heure du Sénégal)";
-  const dynamicSystemInstruction = `${SYSTEM_INSTRUCTION}\n\nCONTEXTE TEMPOREL : Nous sommes le ${currentDateTimeStr}. Si l'utilisateur demande l'heure d'un autre pays, utilise tes outils.`;
+  const dynamicSystemInstruction = `${SYSTEM_INSTRUCTION}\n\nCONTEXTE TEMPOREL : Nous sommes le ${currentDateTimeStr}. Si l'utilisateur demande l'heure d'un autre pays, utilise tes outils.
+  
+  CAPACITÉ DE GÉNÉRATION D'IMAGES : Tu peux générer des images si l'utilisateur le demande. Décris simplement l'image que tu veux créer si l'utilisateur demande "génère une image de...".`;
 
   try {
+    const config: any = {
+      systemInstruction: dynamicSystemInstruction,
+    };
+
+    // N'ajouter les outils que si ce n'est pas un modèle de génération d'images
+    if (!isImageRequest) {
+      config.tools = [
+        { functionDeclarations: [getCurrentTimeFunction] },
+        { googleSearch: {} }
+      ];
+    }
+
     let response = await ai.models.generateContent({
       model,
       contents,
-      config: {
-        systemInstruction: dynamicSystemInstruction,
-        tools: [
-          { functionDeclarations: [getCurrentTimeFunction] },
-          { googleSearch: {} }
-        ],
-      },
+      config,
     });
 
     // Boucle de gestion des appels de fonctions (jusqu'à 2 itérations pour éviter les boucles infinies)
     let iterations = 0;
-    while (response.functionCalls && response.functionCalls.length > 0 && iterations < 2) {
+    while (response.functionCalls && response.functionCalls.length > 0 && iterations < 2 && !isImageRequest) {
       iterations++;
       const call = response.functionCalls[0];
       
@@ -146,28 +169,40 @@ export async function generateResponse(prompt: string, imageBase64?: string, his
           break;
         }
       } else {
-        // Si c'est un autre outil (comme googleSearch qui est géré automatiquement par le modèle en interne
-        // mais on peut avoir besoin de renvoyer la réponse si le SDK ne le fait pas automatiquement)
         break; 
       }
     }
 
-    let finalResponse = response.text || "";
+    let textResponse = "";
+    const generatedImages: string[] = [];
+
+    if (response.candidates && response.candidates[0].content.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.text) {
+          textResponse += part.text;
+        } else if (part.inlineData) {
+          generatedImages.push(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`);
+        }
+      }
+    }
     
     // Ajouter les sources de recherche si disponibles
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
     if (chunks && chunks.length > 0) {
-      finalResponse += "\n\n**Sources :**\n";
+      textResponse += "\n\n**Sources :**\n";
       chunks.forEach((chunk: any, index: number) => {
         if (chunk.web) {
-          finalResponse += `${index + 1}. [${chunk.web.title}](${chunk.web.uri})\n`;
+          textResponse += `${index + 1}. [${chunk.web.title}](${chunk.web.uri})\n`;
         }
       });
     }
 
-    return finalResponse || "Désolé, je n'ai pas pu générer de réponse.";
+    return {
+      text: textResponse || (generatedImages.length > 0 ? "" : "Désolé, je n'ai pas pu générer de réponse."),
+      generatedImages: generatedImages.length > 0 ? generatedImages : undefined
+    };
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "Une erreur est survenue lors de la communication avec l'IA.";
+    return { text: "Une erreur est survenue lors de la communication avec l'IA." };
   }
 }
