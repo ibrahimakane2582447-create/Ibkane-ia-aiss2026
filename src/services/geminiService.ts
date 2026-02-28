@@ -1,38 +1,27 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const SYSTEM_INSTRUCTION = `Tu es Ibkane IA, un assistant intelligent créé par Ibrahima Kane, un élève de CPSF.
-Ton nom vient de Ibrahima Kane.
-Ibrahima Kane t'entraîne tous les jours.
+const SYSTEM_INSTRUCTION = `Tu es Ibkane IA, un assistant intelligent et polyvalent créé par Ibrahima Kane, un élève du CPSF (Cours Privés Source de la Fontaine).
+Ton nom "Ibkane" est le diminutif de Ibrahima Kane.
+Ibrahima Kane est ton créateur et ton entraîneur quotidien.
 
-Tu es un expert dans toutes les matières scolaires :
-- Mathématiques (algèbre, géométrie, analyse, etc.)
-- Physique-Chimie (PC)
-- SVT (Sciences de la Vie et de la Terre)
-- Français (dissertations, résumés, commentaires composés, grammaire, etc.)
-- Arabe
-- Et toutes les autres matières.
+COMPÉTENCES :
+- Expert dans toutes les matières scolaires (Mathématiques, Physique-Chimie, SVT, Français, Arabe, etc.).
+- Maîtrise parfaite des langues du Sénégal (Wolof, Pulaar, Sérère, Diola, Mandingue, Soninké, etc.) et du monde.
+- Capable de donner l'heure exacte partout dans le monde.
 
-LANGUES ET CULTURE :
-- Tu parles couramment toutes les langues du Sénégal (Wolof, Pulaar, Sérère, Diola, Mandingue, Soninké, etc.).
-- Tu peux traduire, expliquer et discuter dans ces langues si l'utilisateur le demande.
-- Tu connais aussi les langues des autres pays du monde.
-- Adapte ton ton pour être chaleureux et encourageant, comme un grand frère ou un mentor.
+RÈGLES DE RÉPONSE POUR LES SCIENCES (Maths, PC, SVT) :
+1. Pour tout exercice, fournis une résolution complète, étape par étape.
+2. Termine toujours par la solution finale clairement identifiée.
+3. Sois direct : évite les longs discours d'introduction. Concentre-toi sur les calculs et la logique.
 
-NOUVELLE CAPACITÉ : Tu peux donner l'heure exacte pour n'importe quel pays ou ville du monde en utilisant l'outil "getCurrentTime". Si on te demande l'heure, utilise cet outil.
+RÈGLES D'IDENTITÉ :
+- Créateur : Ibrahima Kane (élève au Cours Privés Source de la Fontaine - CPSF).
+- Entraîneur : Ibrahima Kane.
+- Ton : Chaleureux, encourageant et précis.
 
-RÈGLE CRUCIALE POUR LES MATIÈRES SCIENTIFIQUES (Maths, PC, SVT) :
-Lorsque l'utilisateur te donne un exercice de Mathématiques, de Physique-Chimie (PC) ou de SVT :
-1. Présente la RÉSOLUTION complète étape par étape (calculs, formules, étapes logiques).
-2. Termine par la SOLUTION FINALE (ex: S = {-3; 3}).
-3. IMPORTANT : Ne donne AUCUNE EXPLICATION textuelle (pas de "On commence par...", "Ensuite on..."). Affiche uniquement les lignes de calcul.
-4. Utilise un format clair, ligne par ligne.
-
-Tu as accès à l'historique de la conversation pour te souvenir des messages précédents et rester cohérent.
-
-Règles d'identité :
-1. Si on te demande "Qui t'a créé ?", tu dois répondre : "J'ai été créé par Ibrahima Kane un élève de CPSF et mon Nom vient de Ibrahima Kane."
-2. Si on te demande "Qui t'entraîne ?", tu dois répondre : "Ibrahima Kane m'entraîne tous les jours."
-3. Sois toujours poli et précis.`;
+OUTILS :
+- Utilise "getCurrentTime" pour l'heure locale si tu connais le fuseau horaire.
+- Utilise "googleSearch" pour toute information en temps réel, y compris l'heure si nécessaire.`;
 
 // Outil pour obtenir l'heure
 const getCurrentTimeFunction = {
@@ -94,25 +83,35 @@ export async function generateResponse(prompt: string, imageBase64?: string, his
     parts: currentParts
   });
 
+  const now = new Date();
+  const currentDateTimeStr = now.toLocaleString('fr-FR', { timeZone: 'Africa/Dakar' }) + " (Heure du Sénégal)";
+  const dynamicSystemInstruction = `${SYSTEM_INSTRUCTION}\n\nCONTEXTE TEMPOREL : Nous sommes le ${currentDateTimeStr}. Si l'utilisateur demande l'heure d'un autre pays, utilise tes outils.`;
+
   try {
     let response = await ai.models.generateContent({
       model,
       contents,
       config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        tools: [{ functionDeclarations: [getCurrentTimeFunction] }],
+        systemInstruction: dynamicSystemInstruction,
+        tools: [
+          { functionDeclarations: [getCurrentTimeFunction] },
+          { googleSearch: {} }
+        ],
       },
     });
 
-    // Gestion de l'appel de fonction (Time)
-    const functionCalls = response.functionCalls;
-    if (functionCalls && functionCalls.length > 0) {
-      const call = functionCalls[0];
+    // Boucle de gestion des appels de fonctions (jusqu'à 2 itérations pour éviter les boucles infinies)
+    let iterations = 0;
+    while (response.functionCalls && response.functionCalls.length > 0 && iterations < 2) {
+      iterations++;
+      const call = response.functionCalls[0];
+      
       if (call.name === "getCurrentTime") {
         const { timezone } = call.args as { timezone: string };
         try {
+          const toolNow = new Date();
           const time = new Intl.DateTimeFormat('fr-FR', {
-            timeZone: timezone,
+            timeZone: timezone || 'Africa/Dakar',
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
@@ -120,33 +119,53 @@ export async function generateResponse(prompt: string, imageBase64?: string, his
             year: 'numeric',
             month: 'long',
             day: 'numeric'
-          }).format(new Date());
+          }).format(toolNow);
 
-          // Envoyer la réponse de la fonction au modèle
+          contents.push({ role: 'model', parts: [{ functionCall: call }] });
+          contents.push({
+            role: 'user',
+            parts: [{
+              functionResponse: {
+                name: "getCurrentTime",
+                response: { content: time, timezone: timezone },
+                id: call.id
+              }
+            }]
+          });
+
           response = await ai.models.generateContent({
             model,
-            contents: [
-              ...contents,
-              { role: 'model', parts: [{ functionCall: call }] },
-              {
-                role: 'user',
-                parts: [{
-                  functionResponse: {
-                    name: "getCurrentTime",
-                    response: { content: time }
-                  }
-                }]
-              }
-            ],
-            config: { systemInstruction: SYSTEM_INSTRUCTION }
+            contents,
+            config: { 
+              systemInstruction: dynamicSystemInstruction,
+              tools: [{ googleSearch: {} }] // On garde googleSearch au cas où
+            }
           });
         } catch (e) {
-          return "Désolé, je n'ai pas pu trouver l'heure pour ce fuseau horaire.";
+          console.error("Tool Error:", e);
+          break;
         }
+      } else {
+        // Si c'est un autre outil (comme googleSearch qui est géré automatiquement par le modèle en interne
+        // mais on peut avoir besoin de renvoyer la réponse si le SDK ne le fait pas automatiquement)
+        break; 
       }
     }
 
-    return response.text || "Désolé, je n'ai pas pu générer de réponse.";
+    let finalResponse = response.text || "";
+    
+    // Ajouter les sources de recherche si disponibles
+    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    if (chunks && chunks.length > 0) {
+      finalResponse += "\n\n**Sources :**\n";
+      chunks.forEach((chunk: any, index: number) => {
+        if (chunk.web) {
+          finalResponse += `${index + 1}. [${chunk.web.title}](${chunk.web.uri})\n`;
+        }
+      });
+    }
+
+    return finalResponse || "Désolé, je n'ai pas pu générer de réponse.";
   } catch (error) {
     console.error("Gemini API Error:", error);
     return "Une erreur est survenue lors de la communication avec l'IA.";
