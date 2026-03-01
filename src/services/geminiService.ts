@@ -53,11 +53,12 @@ export async function generateResponse(prompt: string, imageBase64?: string, his
   const HARDCODED_KEY = ""; 
   
   // Le code choisira automatiquement la meilleure méthode
-  const apiKey = HARDCODED_KEY || import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  // @ts-ignore
+  const apiKey = HARDCODED_KEY || import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : null);
   // ---------------------------------------------------------
   
-  if (!apiKey || apiKey === "") {
-    return { text: "Erreur : Clé API manquante. Ouvrez le fichier 'src/services/geminiService.ts' et collez votre clé à la ligne 86." };
+  if (!apiKey || apiKey === "" || apiKey === "undefined") {
+    return { text: "⚠️ Erreur : Clé API non détectée. Assurez-vous d'avoir configuré la variable d'environnement 'VITE_GEMINI_API_KEY' dans Vercel (n'oubliez pas le préfixe VITE_)." };
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -201,8 +202,9 @@ export async function generateResponse(prompt: string, imageBase64?: string, his
       text: textResponse || (generatedImages.length > 0 ? "" : "Désolé, je n'ai pas pu générer de réponse."),
       generatedImages: generatedImages.length > 0 ? generatedImages : undefined
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
-    return { text: "Une erreur est survenue lors de la communication avec l'IA." };
+    const errorMessage = error?.message || (typeof error === 'string' ? error : JSON.stringify(error));
+    return { text: `⚠️ Erreur de communication avec l'IA : ${errorMessage}. Vérifiez votre clé API (VITE_GEMINI_API_KEY) et votre connexion.` };
   }
 }

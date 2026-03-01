@@ -90,8 +90,15 @@ export default function App() {
       };
       
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "⚠️ Une erreur critique est survenue. Veuillez vérifier votre connexion internet et la configuration de votre clé API (VITE_GEMINI_API_KEY).",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
     } finally {
       setIsLoading(false);
     }
