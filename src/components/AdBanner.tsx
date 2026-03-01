@@ -8,8 +8,8 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot }) => {
   const adRef = useRef<HTMLModElement>(null);
   const pushedRef = useRef(false);
 
-  // Remplacez 'YOUR_ID' par votre vrai ID ca-pub-XXXX
-  const pubId = import.meta.env.VITE_ADSENSE_PUB_ID || "YOUR_ID";
+  // Votre ID ca-pub-XXXX
+  const pubId = import.meta.env.VITE_ADSENSE_PUB_ID || "8106079340317111";
 
   useEffect(() => {
     if (pushedRef.current || pubId === "YOUR_ID") return;
