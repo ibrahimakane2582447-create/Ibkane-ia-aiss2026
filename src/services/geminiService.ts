@@ -74,9 +74,9 @@ export async function generateResponse(
                          prompt.toLowerCase().includes("dessine") ||
                          prompt.toLowerCase().includes("crée une image");
 
-  // Utiliser gemini-3-flash-preview pour les outils (recherche, heure)
+  // Utiliser gemini-3.1-pro-preview pour les outils et les réponses textuelles complexes
   // Utiliser gemini-2.5-flash-image pour la génération d'images
-  const modelName = isImageRequest ? "gemini-2.5-flash-image" : "gemini-3-flash-preview"; 
+  const modelName = isImageRequest ? "gemini-2.5-flash-image" : "gemini-3.1-pro-preview"; 
   
   const contents: any[] = [];
   
