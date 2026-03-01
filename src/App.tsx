@@ -11,6 +11,7 @@ import { cn } from './lib/utils';
 import { generateResponse, GeminiResponse } from './services/geminiService';
 import { AdBanner } from './components/AdBanner';
 import { GeneratedImage } from './components/GeneratedImage';
+import { checkAndIncrementUsage } from './lib/usageTracker';
 
 interface Message {
   id: string;
@@ -58,6 +59,32 @@ export default function App() {
 
   const handleSend = async () => {
     if ((!input.trim() && !selectedImage) || isLoading) return;
+
+    const isImageReq = input.toLowerCase().includes("génère") || 
+                       input.toLowerCase().includes("image") || 
+                       input.toLowerCase().includes("dessine") ||
+                       input.toLowerCase().includes("crée une image");
+
+    const usageCheck = checkAndIncrementUsage(isImageReq);
+    
+    if (!usageCheck.allowed) {
+      let errorMessage = "";
+      if (usageCheck.reason === 'image_limit') {
+        errorMessage = "⚠️ **Limite atteinte** : Vous avez épuisé vos 5 générations d'images pour aujourd'hui. Réessayez demain !";
+      } else {
+        const resetDate = new Date(usageCheck.resetTime!);
+        const timeStr = resetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        errorMessage = `⚠️ **Limite atteinte** : Vous avez envoyé 25 messages. Veuillez patienter et réessayer à **${timeStr}**.`;
+      }
+      
+      setMessages((prev) => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: errorMessage,
+        timestamp: new Date(),
+      }]);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
