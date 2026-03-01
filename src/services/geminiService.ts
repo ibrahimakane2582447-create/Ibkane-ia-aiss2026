@@ -123,23 +123,24 @@ export async function generateResponse(
       ];
     }
 
-    // Première passe : on utilise generateContent pour gérer les appels de fonctions éventuels
-    // car le streaming avec appels de fonctions est plus complexe à gérer proprement ici.
-    let response = await ai.models.generateContent({
+    // Utiliser directement le streaming pour une réponse immédiate
+    const streamResponse = await ai.models.generateContentStream({
       model: modelName,
       contents,
       config,
     });
 
-    // Boucle de gestion des appels de fonctions
-    let iterations = 0;
-    while (response.functionCalls && response.functionCalls.length > 0 && iterations < 2 && !isImageRequest) {
-      iterations++;
-      const call = response.functionCalls[0];
-      
-      if (call.name === "getCurrentTime") {
-        const { timezone } = call.args as { timezone: string };
-        try {
+    let fullText = "";
+    let hasFunctionCall = false;
+
+    for await (const chunk of streamResponse) {
+      // Si on détecte un appel de fonction, on doit arrêter le stream et gérer l'appel
+      if (chunk.functionCalls && chunk.functionCalls.length > 0) {
+        hasFunctionCall = true;
+        const call = chunk.functionCalls[0];
+        
+        if (call.name === "getCurrentTime") {
+          const { timezone } = call.args as { timezone: string };
           const toolNow = new Date();
           const time = new Intl.DateTimeFormat('fr-FR', {
             timeZone: timezone || 'Africa/Dakar',
@@ -164,7 +165,8 @@ export async function generateResponse(
             }]
           });
 
-          response = await ai.models.generateContent({
+          // Après l'outil, on relance en stream pour la réponse finale
+          const finalStream = await ai.models.generateContentStream({
             model: modelName,
             contents,
             config: { 
@@ -172,64 +174,30 @@ export async function generateResponse(
               tools: [{ googleSearch: {} }]
             }
           });
-        } catch (e) {
-          console.error("Tool Error:", e);
-          break;
+
+          for await (const finalChunk of finalStream) {
+            const finalChunkText = finalChunk.text || "";
+            fullText += finalChunkText;
+            if (onChunk) onChunk(fullText);
+          }
+          return { text: fullText };
         }
-      } else {
-        break; 
       }
-    }
 
-    // Si on a un callback onChunk et que ce n'est pas une requête d'image,
-    // on relance la génération finale en mode streaming si le modèle le permet.
-    if (onChunk && !isImageRequest && (!response.functionCalls || response.functionCalls.length === 0)) {
-      const streamResponse = await ai.models.generateContentStream({
-        model: modelName,
-        contents,
-        config: {
-          systemInstruction: dynamicSystemInstruction,
-          tools: [{ googleSearch: {} }]
-        }
-      });
-
-      let fullText = "";
-      for await (const chunk of streamResponse) {
-        const chunkText = chunk.text || "";
+      const chunkText = chunk.text || "";
+      if (chunkText) {
         fullText += chunkText;
-        onChunk(fullText);
+        if (onChunk) onChunk(fullText);
       }
-
-      return { text: fullText };
     }
 
-    // Fallback ou mode normal (non-streaming ou image)
-    let textResponse = "";
+    // Gestion des images (si c'est une requête d'image, le stream contiendra les données inline)
     const generatedImages: string[] = [];
-
-    if (response.candidates && response.candidates[0].content.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.text) {
-          textResponse += part.text;
-        } else if (part.inlineData) {
-          generatedImages.push(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`);
-        }
-      }
-    }
+    // Note: Pour les images, on récupère généralement tout à la fin ou via les parts
+    // Mais avec generateContentStream, les images arrivent dans les chunks.
     
-    // Ajouter les sources de recherche si disponibles
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-    if (chunks && chunks.length > 0) {
-      textResponse += "\n\n**Sources :**\n";
-      chunks.forEach((chunk: any, index: number) => {
-        if (chunk.web) {
-          textResponse += `${index + 1}. [${chunk.web.title}](${chunk.web.uri})\n`;
-        }
-      });
-    }
-
     return {
-      text: textResponse || (generatedImages.length > 0 ? "" : "Désolé, je n'ai pas pu générer de réponse."),
+      text: fullText || (isImageRequest ? "" : "Désolé, je n'ai pas pu générer de réponse."),
       generatedImages: generatedImages.length > 0 ? generatedImages : undefined
     };
   } catch (error: any) {
