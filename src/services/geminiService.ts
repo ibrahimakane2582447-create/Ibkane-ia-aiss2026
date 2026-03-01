@@ -45,7 +45,12 @@ export interface GeminiResponse {
   generatedImages?: string[];
 }
 
-export async function generateResponse(prompt: string, imageBase64?: string, history: { role: 'user' | 'assistant', content: string }[] = []): Promise<GeminiResponse> {
+export async function generateResponse(
+  prompt: string, 
+  imageBase64?: string, 
+  history: { role: 'user' | 'assistant', content: string }[] = [],
+  onChunk?: (text: string) => void
+): Promise<GeminiResponse> {
   // ---------------------------------------------------------
   // ZONE DE CONFIGURATION FACILE
   // ---------------------------------------------------------
@@ -71,7 +76,7 @@ export async function generateResponse(prompt: string, imageBase64?: string, his
 
   // Utiliser gemini-3-flash-preview pour les outils (recherche, heure)
   // Utiliser gemini-2.5-flash-image pour la génération d'images
-  const model = isImageRequest ? "gemini-2.5-flash-image" : "gemini-3-flash-preview"; 
+  const modelName = isImageRequest ? "gemini-2.5-flash-image" : "gemini-3-flash-preview"; 
   
   const contents: any[] = [];
   
@@ -118,13 +123,15 @@ export async function generateResponse(prompt: string, imageBase64?: string, his
       ];
     }
 
+    // Première passe : on utilise generateContent pour gérer les appels de fonctions éventuels
+    // car le streaming avec appels de fonctions est plus complexe à gérer proprement ici.
     let response = await ai.models.generateContent({
-      model,
+      model: modelName,
       contents,
       config,
     });
 
-    // Boucle de gestion des appels de fonctions (jusqu'à 2 itérations pour éviter les boucles infinies)
+    // Boucle de gestion des appels de fonctions
     let iterations = 0;
     while (response.functionCalls && response.functionCalls.length > 0 && iterations < 2 && !isImageRequest) {
       iterations++;
@@ -158,11 +165,11 @@ export async function generateResponse(prompt: string, imageBase64?: string, his
           });
 
           response = await ai.models.generateContent({
-            model,
+            model: modelName,
             contents,
             config: { 
               systemInstruction: dynamicSystemInstruction,
-              tools: [{ googleSearch: {} }] // On garde googleSearch au cas où
+              tools: [{ googleSearch: {} }]
             }
           });
         } catch (e) {
@@ -174,6 +181,29 @@ export async function generateResponse(prompt: string, imageBase64?: string, his
       }
     }
 
+    // Si on a un callback onChunk et que ce n'est pas une requête d'image,
+    // on relance la génération finale en mode streaming si le modèle le permet.
+    if (onChunk && !isImageRequest && (!response.functionCalls || response.functionCalls.length === 0)) {
+      const streamResponse = await ai.models.generateContentStream({
+        model: modelName,
+        contents,
+        config: {
+          systemInstruction: dynamicSystemInstruction,
+          tools: [{ googleSearch: {} }]
+        }
+      });
+
+      let fullText = "";
+      for await (const chunk of streamResponse) {
+        const chunkText = chunk.text || "";
+        fullText += chunkText;
+        onChunk(fullText);
+      }
+
+      return { text: fullText };
+    }
+
+    // Fallback ou mode normal (non-streaming ou image)
     let textResponse = "";
     const generatedImages: string[] = [];
 

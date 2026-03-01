@@ -79,17 +79,37 @@ export default function App() {
         content: msg.content
       }));
 
-      const response: GeminiResponse = await generateResponse(userMessage.content, userMessage.image, history);
-      
+      // Create a placeholder message for the assistant
+      const assistantMessageId = (Date.now() + 1).toString();
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: assistantMessageId,
         role: 'assistant',
-        content: response.text,
-        generatedImages: response.generatedImages,
+        content: '',
         timestamp: new Date(),
       };
       
       setMessages((prev) => [...prev, assistantMessage]);
+
+      const response: GeminiResponse = await generateResponse(
+        userMessage.content, 
+        userMessage.image, 
+        history,
+        (chunkText) => {
+          // Update the assistant message content in real-time
+          setMessages((prev) => prev.map(msg => 
+            msg.id === assistantMessageId ? { ...msg, content: chunkText } : msg
+          ));
+        }
+      );
+      
+      // Final update with images if any
+      setMessages((prev) => prev.map(msg => 
+        msg.id === assistantMessageId ? { 
+          ...msg, 
+          content: response.text || msg.content,
+          generatedImages: response.generatedImages 
+        } : msg
+      ));
     } catch (error: any) {
       console.error(error);
       const assistantMessage: Message = {
