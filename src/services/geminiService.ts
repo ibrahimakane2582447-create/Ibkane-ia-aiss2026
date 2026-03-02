@@ -206,6 +206,11 @@ export async function generateResponse(
   } catch (error: any) {
     console.error("Gemini API Error:", error);
     const errorMessage = error?.message || (typeof error === 'string' ? error : JSON.stringify(error));
+    
+    if (errorMessage.includes("429") || errorMessage.includes("RESOURCE_EXHAUSTED")) {
+      return { text: "⚠️ **Ibkane IA est très sollicité !**\n\nLe quota gratuit de ma clé API est temporairement épuisé. Veuillez patienter **une minute** et réessayer. \n\n*Astuce pour le créateur : Vous pouvez créer une nouvelle clé API ou activer le paiement à l'usage sur Google AI Studio pour supprimer cette limite.*" };
+    }
+    
     return { text: `⚠️ Erreur de communication avec l'IA : ${errorMessage}. Vérifiez votre clé API (VITE_GEMINI_API_KEY) et votre connexion.` };
   }
 }
