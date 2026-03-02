@@ -4,14 +4,15 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Camera, Image as ImageIcon, X, User, Bot, Loader2, Sparkles, Trash2, Download } from 'lucide-react';
+import { Send, Camera, Image as ImageIcon, X, User, Bot, Loader2, Sparkles, Trash2, Download, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { cn } from './lib/utils';
 import { generateResponse, GeminiResponse } from './services/geminiService';
 import { AdBanner } from './components/AdBanner';
 import { GeneratedImage } from './components/GeneratedImage';
-import { checkAndIncrementUsage } from './lib/usageTracker';
+import { checkAndIncrementUsage, getUsage } from './lib/usageTracker';
+import { PremiumModal } from './components/PremiumModal';
 
 interface Message {
   id: string;
@@ -35,8 +36,14 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+  const [usage, setUsage] = useState(getUsage());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setUsage(getUsage());
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -192,6 +199,16 @@ export default function App() {
         </div>
         
         <div className="flex items-center gap-2">
+          {!usage.isPremium && (
+            <button 
+              onClick={() => setIsPremiumModalOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/20 transition-all text-xs font-bold"
+            >
+              <Crown className="w-3.5 h-3.5" />
+              Premium
+            </button>
+          )}
+          
           <button 
             onClick={() => setIsDarkMode(!isDarkMode)}
             className={cn(
@@ -426,6 +443,12 @@ export default function App() {
           </p>
         </div>
       </footer>
+
+      <PremiumModal 
+        isOpen={isPremiumModalOpen} 
+        onClose={() => setIsPremiumModalOpen(false)} 
+        isDarkMode={isDarkMode} 
+      />
     </div>
   );
 }

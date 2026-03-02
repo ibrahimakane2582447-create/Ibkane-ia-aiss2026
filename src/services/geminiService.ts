@@ -74,10 +74,13 @@ export async function generateResponse(
                          prompt.toLowerCase().includes("dessine") ||
                          prompt.toLowerCase().includes("crée une image");
 
-  // Utiliser gemini-3.1-pro-preview pour les outils et les réponses textuelles complexes
+  // Utiliser gemini-3-flash-preview pour les outils et les réponses textuelles (plus stable pour les clés gratuites)
   // Utiliser gemini-2.5-flash-image pour la génération d'images
-  const modelName = isImageRequest ? "gemini-2.5-flash-image" : "gemini-3.1-pro-preview"; 
+  const modelName = isImageRequest ? "gemini-2.5-flash-image" : "gemini-3-flash-preview"; 
   
+  if (apiKey) {
+    console.log("API Key detected (starts with):", apiKey.substring(0, 4) + "...");
+  }  
   const contents: any[] = [];
   
   for (const msg of history) {

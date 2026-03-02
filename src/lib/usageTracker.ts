@@ -7,6 +7,7 @@ interface UsageData {
   imageResetTime: number;
   messageCount: number;
   messageResetTime: number;
+  isPremium: boolean;
 }
 
 function getNextMidnight(): number {
@@ -24,6 +25,7 @@ export function getUsage(): UsageData {
     imageResetTime: getNextMidnight(),
     messageCount: 0,
     messageResetTime: now + MESSAGE_RESET_MS,
+    isPremium: false,
   };
 
   let updated = false;
@@ -49,9 +51,17 @@ export function getUsage(): UsageData {
   return usage;
 }
 
+export function setPremium(status: boolean) {
+  const usage = getUsage();
+  usage.isPremium = status;
+  localStorage.setItem('ibkane_usage', JSON.stringify(usage));
+}
+
 export function checkAndIncrementUsage(isImageGeneration: boolean): { allowed: boolean; reason?: string; resetTime?: number } {
   const usage = getUsage();
   const now = Date.now();
+
+  if (usage.isPremium) return { allowed: true };
 
   if (isImageGeneration) {
     if (usage.imageCount >= IMAGE_LIMIT) {
