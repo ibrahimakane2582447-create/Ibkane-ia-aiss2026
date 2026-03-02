@@ -38,8 +38,15 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
   const [usage, setUsage] = useState(getUsage());
+  const [isApiConnected, setIsApiConnected] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Vérifier si la clé API est détectée
+    const key = import.meta.env.VITE_GEMINI_API_KEY;
+    setIsApiConnected(!!key && key !== "undefined" && key !== "");
+  }, []);
 
   useEffect(() => {
     setUsage(getUsage());
@@ -194,7 +201,20 @@ export default function App() {
           </div>
           <div>
             <h1 className={cn("text-lg font-bold tracking-tight leading-none", isDarkMode ? "text-white" : "text-zinc-900")}>Ibkane IA</h1>
-            <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">Par Ibrahima Kane</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Par Ibrahima Kane</p>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-zinc-500/10 border border-zinc-500/10">
+                <div className={cn(
+                  "w-1.5 h-1.5 rounded-full animate-pulse",
+                  isApiConnected === true ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : 
+                  isApiConnected === false ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" : 
+                  "bg-zinc-500"
+                )} />
+                <span className="text-[8px] font-bold text-zinc-500 uppercase">
+                  {isApiConnected === true ? "Connecté" : isApiConnected === false ? "Déconnecté" : "Vérification..."}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
         
