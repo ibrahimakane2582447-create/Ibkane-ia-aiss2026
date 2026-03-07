@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Camera, Image as ImageIcon, X, User, Bot, Loader2, Sparkles, Trash2, Download, Crown } from 'lucide-react';
+import { Send, Camera, Image as ImageIcon, X, User, Bot, Loader2, Sparkles, Trash2, Download, Crown, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { cn } from './lib/utils';
@@ -383,6 +383,29 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Quick Actions */}
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {[
+              { label: "🎨 Illustrer", icon: Sparkles, prompt: "Génère une illustration pédagogique pour expliquer : " },
+              { label: "📝 Résoudre", icon: Check, prompt: "Résous cet exercice étape par étape : " },
+              { label: "💡 Expliquer", icon: Bot, prompt: "Explique-moi simplement ce concept : " },
+            ].map((action, i) => (
+              <button
+                key={i}
+                onClick={() => setInput(prev => action.prompt + prev)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border",
+                  isDarkMode 
+                    ? "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-emerald-400 hover:border-emerald-500/50" 
+                    : "bg-white border-zinc-200 text-zinc-600 hover:text-emerald-600 hover:border-emerald-500/50 shadow-sm"
+                )}
+              >
+                <action.icon className="w-3 h-3" />
+                {action.label}
+              </button>
+            ))}
+          </div>
 
           <div className="flex items-end gap-2">
             <div className={cn(
