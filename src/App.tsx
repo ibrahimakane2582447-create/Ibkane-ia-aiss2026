@@ -202,18 +202,13 @@ export default function App() {
           <div>
             <h1 className={cn("text-lg font-bold tracking-tight leading-none", isDarkMode ? "text-white" : "text-zinc-900")}>Ibkane IA</h1>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Par Ibrahima Kane</p>
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-zinc-500/10 border border-zinc-500/10">
-                <div className={cn(
-                  "w-1.5 h-1.5 rounded-full animate-pulse",
-                  isApiConnected === true ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : 
-                  isApiConnected === false ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" : 
-                  "bg-zinc-500"
-                )} />
-                <span className="text-[8px] font-bold text-zinc-500 uppercase">
-                  {isApiConnected === true ? "Connecté" : isApiConnected === false ? "Déconnecté" : "Vérification..."}
-                </span>
-              </div>
+              <p className="text-[8px] text-zinc-500 uppercase tracking-widest">Par Ibrahima Kane</p>
+              <div className={cn(
+                "w-1.5 h-1.5 rounded-full animate-pulse",
+                isApiConnected === true ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : 
+                isApiConnected === false ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" : 
+                "bg-zinc-500"
+              )} title={isApiConnected === true ? "Connecté" : isApiConnected === false ? "Déconnecté" : "Vérification..."} />
             </div>
           </div>
         </div>
@@ -259,35 +254,36 @@ export default function App() {
 
       {/* Chat Area */}
       <main className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-hide">
-        {/* Publicité en haut */}
-        <AdBanner slot="1234567890" />
-        
-        <AnimatePresence initial={false}>
-          {messages.map((message) => (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              className={cn(
-                "flex w-full gap-3",
-                message.role === 'user' ? "flex-row-reverse" : "flex-row"
-              )}
-            >
-              <div className={cn(
-                "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-1",
-                message.role === 'user' 
-                  ? (isDarkMode ? "bg-zinc-800" : "bg-zinc-200") 
-                  : "bg-emerald-500/10"
-              )}>
-                {message.role === 'user' ? (
-                  <User className={cn("w-4 h-4", isDarkMode ? "text-zinc-400" : "text-zinc-600")} />
-                ) : (
-                  <Bot className="w-4 h-4 text-emerald-500" />
+        <div className="max-w-full px-2 sm:px-6 lg:px-12 mx-auto space-y-6">
+          {/* Publicité en haut */}
+          <AdBanner slot="1234567890" />
+          
+          <AnimatePresence initial={false}>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className={cn(
+                  "flex w-full gap-3",
+                  message.role === 'user' ? "flex-row-reverse" : "flex-row"
                 )}
-              </div>
-              
+              >
                 <div className={cn(
-                  "flex flex-col max-w-[85%] gap-2",
+                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-1",
+                  message.role === 'user' 
+                    ? (isDarkMode ? "bg-zinc-800" : "bg-zinc-200") 
+                    : "bg-emerald-500/10"
+                )}>
+                  {message.role === 'user' ? (
+                    <User className={cn("w-4 h-4", isDarkMode ? "text-zinc-400" : "text-zinc-600")} />
+                  ) : (
+                    <Bot className="w-4 h-4 text-emerald-500" />
+                  )}
+                </div>
+                
+                <div className={cn(
+                  "flex flex-col max-w-[95%] sm:max-w-[85%] gap-2",
                   message.role === 'user' ? "items-end" : "items-start"
                 )}>
                   {message.image && (
@@ -322,32 +318,33 @@ export default function App() {
                     </div>
                   )}
                 
-                <span className="text-[10px] text-zinc-600 mt-1 px-1">
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+                  <span className="text-[10px] text-zinc-600 mt-1 px-1">
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-3"
+            >
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 mt-1">
+                <Bot className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className={cn(
+                "border px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-2 transition-colors",
+                isDarkMode ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200"
+              )}>
+                <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
+                <span className={cn("text-xs", isDarkMode ? "text-zinc-400" : "text-zinc-500")}>Ibkane IA réfléchit...</span>
               </div>
             </motion.div>
-          ))}
-        </AnimatePresence>
-        
-        {isLoading && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex gap-3"
-          >
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 mt-1">
-              <Bot className="w-4 h-4 text-emerald-500" />
-            </div>
-            <div className={cn(
-              "border px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-2 transition-colors",
-              isDarkMode ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200"
-            )}>
-              <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
-              <span className={cn("text-xs", isDarkMode ? "text-zinc-400" : "text-zinc-500")}>Ibkane IA réfléchit...</span>
-            </div>
-          </motion.div>
-        )}
+          )}
+        </div>
         <div ref={messagesEndRef} />
       </main>
 
@@ -356,7 +353,7 @@ export default function App() {
         "p-4 border-t transition-colors",
         isDarkMode ? "bg-zinc-950 border-zinc-800" : "bg-zinc-50 border-zinc-200"
       )}>
-        <div className="max-w-3xl mx-auto space-y-3">
+        <div className="max-w-full px-2 sm:px-6 lg:px-12 mx-auto space-y-3">
           {/* Image Preview */}
           <AnimatePresence>
             {selectedImage && (
@@ -383,29 +380,6 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Quick Actions */}
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {[
-              { label: "🎨 Illustrer", icon: Sparkles, prompt: "Génère une illustration pédagogique pour expliquer : " },
-              { label: "📝 Résoudre", icon: Check, prompt: "Résous cet exercice étape par étape : " },
-              { label: "💡 Expliquer", icon: Bot, prompt: "Explique-moi simplement ce concept : " },
-            ].map((action, i) => (
-              <button
-                key={i}
-                onClick={() => setInput(prev => action.prompt + prev)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border",
-                  isDarkMode 
-                    ? "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-emerald-400 hover:border-emerald-500/50" 
-                    : "bg-white border-zinc-200 text-zinc-600 hover:text-emerald-600 hover:border-emerald-500/50 shadow-sm"
-                )}
-              >
-                <action.icon className="w-3 h-3" />
-                {action.label}
-              </button>
-            ))}
-          </div>
 
           <div className="flex items-end gap-2">
             <div className={cn(
